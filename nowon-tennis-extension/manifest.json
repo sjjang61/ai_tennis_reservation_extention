@@ -1,0 +1,31 @@
+{
+  "manifest_version": 3,
+  "name": "노원 마들 테니스장 예약",
+  "version": "1.0.0",
+  "description": "노원 마들 테니스장 코트 자동 예약 익스텐션",
+  "permissions": ["activeTab", "scripting", "tabs", "storage"],
+  "host_permissions": ["https://reservation.nowonsc.kr/*"],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://reservation.nowonsc.kr/*"],
+      "js": ["jquery-3.7.1.min.js", "content.js"]
+    }
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["jquery-3.7.1.min.js"],
+      "matches": ["https://reservation.nowonsc.kr/*"]
+    }
+  ]
+}

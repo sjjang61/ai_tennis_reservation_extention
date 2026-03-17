@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>노원 마들 테니스장 예약</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      width: 420px;
+      max-height: 640px;
+      overflow-y: auto;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 14px;
+      background: #FAFAFA;
+      color: #212121;
+    }
+
+    /* ── 헤더 ── */
+    .header {
+      background: #2E7D32;
+      color: white;
+      padding: 12px 14px;
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    #btn-home {
+      background: rgba(255,255,255,0.15);
+      border: 1px solid rgba(255,255,255,0.4);
+      color: white;
+      border-radius: 5px;
+      padding: 4px 9px;
+      font-size: 13px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background 0.15s;
+    }
+
+    #btn-home:hover {
+      background: rgba(255,255,255,0.28);
+    }
+
+    /* ── 2컬럼 레이아웃 ── */
+    .body-wrapper {
+      display: flex;
+      align-items: stretch;
+    }
+
+    /* ── 좌측 메인 패널 ── */
+    .main-panel {
+      flex: 1;
+      min-width: 0;
+      border-right: 1px solid #E0E0E0;
+    }
+
+    .section {
+      padding: 12px 14px;
+      border-bottom: 1px solid #E0E0E0;
+    }
+
+    .section-title {
+      font-size: 11px;
+      font-weight: 600;
+      color: #2E7D32;
+      margin-bottom: 9px;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+
+    #date-input {
+      width: 100%;
+      padding: 7px 10px;
+      border: 1px solid #BDBDBD;
+      border-radius: 6px;
+      font-size: 13px;
+      color: #212121;
+      background: white;
+      outline: none;
+      cursor: pointer;
+    }
+
+    #date-input:focus {
+      border-color: #2E7D32;
+      box-shadow: 0 0 0 2px rgba(46,125,50,0.15);
+    }
+
+    .checkbox-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 5px;
+    }
+
+    .checkbox-label {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      cursor: pointer;
+      padding: 4px 5px;
+      border-radius: 4px;
+      transition: background 0.15s;
+      user-select: none;
+    }
+
+    .checkbox-label:hover { background: #E8F5E9; }
+
+    .checkbox-label input[type="checkbox"] {
+      appearance: none;
+      -webkit-appearance: none;
+      width: 15px;
+      height: 15px;
+      min-width: 15px;
+      border: 2px solid #BDBDBD;
+      border-radius: 3px;
+      background: white;
+      cursor: pointer;
+      position: relative;
+      transition: all 0.15s;
+    }
+
+    .checkbox-label input[type="checkbox"]:checked {
+      background: #2E7D32;
+      border-color: #2E7D32;
+    }
+
+    .checkbox-label input[type="checkbox"]:checked::after {
+      content: '';
+      position: absolute;
+      left: 2px;
+      top: 0px;
+      width: 5px;
+      height: 8px;
+      border: 2px solid white;
+      border-top: none;
+      border-left: none;
+      transform: rotate(45deg);
+    }
+
+    .checkbox-label span { font-size: 12px; color: #424242; }
+
+    /* ── 선택현황 + 추가 버튼 ── */
+    .add-cart-section {
+      padding: 9px 14px 11px;
+      border-bottom: 1px solid #E0E0E0;
+      background: #F5F5F5;
+    }
+
+    #counter-text {
+      font-size: 12px;
+      color: #616161;
+      font-weight: 500;
+      margin-bottom: 7px;
+    }
+
+    #counter-text.over-limit { color: #D32F2F; font-weight: 700; }
+    #counter-text.ok         { color: #2E7D32; font-weight: 600; }
+
+    #btn-add-cart {
+      width: 100%;
+      padding: 7px;
+      background: #FF6F00;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    #btn-add-cart:hover:not(:disabled) { background: #E65100; }
+    #btn-add-cart:disabled { background: #FFCC80; cursor: not-allowed; }
+
+    /* ── 장바구니 ── */
+    .cart-section {
+      padding: 10px 14px;
+      border-bottom: 1px solid #E0E0E0;
+      display: none;
+    }
+
+    .cart-section.visible { display: block; }
+
+    .cart-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 7px;
+    }
+
+    .cart-title { font-size: 11px; font-weight: 600; color: #2E7D32; text-transform: uppercase; }
+
+    .cart-total-badge {
+      font-size: 11px;
+      font-weight: 700;
+      color: white;
+      background: #2E7D32;
+      padding: 2px 7px;
+      border-radius: 10px;
+    }
+
+    .cart-total-badge.over-limit { background: #D32F2F; }
+
+    .cart-list { display: flex; flex-direction: column; gap: 5px; }
+
+    .cart-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 5px 8px;
+      background: white;
+      border: 1px solid #E0E0E0;
+      border-radius: 5px;
+    }
+
+    .cart-item-courts { font-size: 11px; font-weight: 700; color: #2E7D32; white-space: nowrap; }
+    .cart-item-divider { font-size: 11px; color: #BDBDBD; }
+    .cart-item-times   { font-size: 11px; color: #616161; flex: 1; }
+
+    .btn-remove {
+      background: none;
+      border: none;
+      color: #BDBDBD;
+      cursor: pointer;
+      font-size: 14px;
+      padding: 0;
+      line-height: 1;
+      transition: color 0.15s;
+      margin-left: auto;
+      flex-shrink: 0;
+    }
+
+    .btn-remove:hover { color: #D32F2F; }
+
+    /* ── 예약하기 버튼 ── */
+    .button-section { padding: 12px 14px; }
+
+    #btn-reserve {
+      width: 100%;
+      padding: 10px;
+      background: #2E7D32;
+      color: white;
+      border: none;
+      border-radius: 7px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    #btn-reserve:hover:not(:disabled) { background: #1B5E20; }
+    #btn-reserve:disabled { background: #A5D6A7; cursor: not-allowed; }
+
+    #result-msg {
+      padding: 9px 14px;
+      font-size: 12px;
+      font-weight: 500;
+      text-align: center;
+      display: none;
+    }
+
+    #result-msg.success {
+      color: #2E7D32; background: #E8F5E9;
+      border-top: 1px solid #C8E6C9; display: block;
+    }
+
+    #result-msg.error {
+      color: #D32F2F; background: #FFEBEE;
+      border-top: 1px solid #FFCDD2; display: block;
+    }
+
+    /* ── 우측 히스토리 패널 ── */
+    .history-panel {
+      width: 118px;
+      min-width: 118px;
+      padding: 10px 8px;
+      background: #F5F5F5;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .history-title {
+      font-size: 10px;
+      font-weight: 600;
+      color: #9E9E9E;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      margin-bottom: 8px;
+      text-align: center;
+    }
+
+    .history-empty {
+      font-size: 10px;
+      color: #BDBDBD;
+      text-align: center;
+      margin-top: 10px;
+      line-height: 1.6;
+    }
+
+    #history-list {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .history-item {
+      width: 100%;
+      text-align: left;
+      padding: 6px 7px;
+      background: white;
+      border: 1px solid #C8E6C9;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background 0.15s;
+      border-left: 3px solid #2E7D32;
+    }
+
+    .history-item:hover { background: #E8F5E9; }
+
+    .history-item-courts {
+      font-size: 11px;
+      font-weight: 700;
+      color: #1B5E20;
+      display: block;
+      margin-bottom: 2px;
+    }
+
+    .history-item-times {
+      font-size: 10px;
+      color: #757575;
+      display: block;
+      line-height: 1.5;
+      word-break: break-all;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 헤더 -->
+  <div class="header">
+    <span>🎾 노원 마들 테니스장 예약</span>
+    <button id="btn-home">🏠 홈</button>
+  </div>
+
+  <div class="body-wrapper">
+
+    <!-- 좌측 메인 패널 -->
+    <div class="main-panel">
+
+      <!-- 날짜 선택 -->
+      <div class="section">
+        <div class="section-title">날짜 선택</div>
+        <input type="date" id="date-input" />
+      </div>
+
+      <!-- 코트 선택 -->
+      <div class="section">
+        <div class="section-title">코트 선택 (복수 선택)</div>
+        <div class="checkbox-grid" id="court-grid"></div>
+      </div>
+
+      <!-- 시간 선택 -->
+      <div class="section">
+        <div class="section-title">시간 선택 (복수 선택)</div>
+        <div class="checkbox-grid" id="time-grid"></div>
+      </div>
+
+      <!-- 선택현황 + 장바구니 추가 -->
+      <div class="add-cart-section">
+        <div id="counter-text">선택 현황: 코트 0개 × 시간 0개 = 0건</div>
+        <button id="btn-add-cart">🛒 장바구니에 추가</button>
+      </div>
+
+      <!-- 장바구니 -->
+      <div class="cart-section" id="cart-section">
+        <div class="cart-header">
+          <span class="cart-title">🛒 장바구니</span>
+          <span class="cart-total-badge" id="cart-total-badge">총 0건 / 4건</span>
+        </div>
+        <div class="cart-list" id="cart-list"></div>
+      </div>
+
+      <!-- 예약하기 버튼 -->
+      <div class="button-section">
+        <button id="btn-reserve">예약하기</button>
+      </div>
+
+      <!-- 결과 메시지 -->
+      <div id="result-msg"></div>
+
+    </div><!-- /main-panel -->
+
+    <!-- 우측 히스토리 패널 -->
+    <div class="history-panel">
+      <div class="history-title">재사용</div>
+      <div id="history-list">
+        <div class="history-empty">예약 완료 후<br/>여기에 표시됩니다</div>
+      </div>
+    </div>
+
+  </div><!-- /body-wrapper -->
+
+  <script src="popup.js"></script>
+</body>
+</html>
