@@ -20,13 +20,29 @@ async function reserve(basket_list) {
   }
   // alert(alertMsg);
 
-  // 1단계: 다음달로 변경
-  await new Promise(function(resolve) {
-    setTimeout(function() {      
-      $("div.clndr-control-button.rightalign span").trigger("click");
-      resolve();
-    }, 500);
-  });
+  // 1단계: 다음달로 변경 (예약 날짜가 현재 페이지의 다음달인 경우에만 실행)
+  var exposedText = $("div.month").text().trim(); // 예: "2026년 3월"
+  var exposedMatch = exposedText.match(/(\d{4})년\s*(\d{1,2})월/);
+  var reserveYYYYMM = basket_list[0].date.slice(0, 7); // 예: "2026-04"
+
+  var shouldGoNext = false;
+  if (exposedMatch) {
+    var exposedYear  = parseInt(exposedMatch[1], 10);
+    var exposedMonth = parseInt(exposedMatch[2], 10);
+    var nextYear  = exposedMonth === 12 ? exposedYear + 1 : exposedYear;
+    var nextMonth = exposedMonth === 12 ? 1 : exposedMonth + 1;
+    var nextYYYYMM = String(nextYear) + '-' + String(nextMonth).padStart(2, '0');
+    shouldGoNext = (reserveYYYYMM === nextYYYYMM);
+  }
+
+  if (shouldGoNext) {
+    await new Promise(function(resolve) {
+      setTimeout(function() {
+        $("div.clndr-control-button.rightalign span").trigger("click");
+        resolve();
+      }, 500);
+    });
+  }
 
   // 2단계: 날짜 선택(여러날짜 중복 불가)
   var date = basket_list[0].date;

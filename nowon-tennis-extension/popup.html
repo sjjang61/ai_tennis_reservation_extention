@@ -12,7 +12,7 @@
     }
 
     body {
-      width: 420px;
+      width: 560px;
       max-height: 640px;
       overflow-y: auto;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -94,9 +94,27 @@
       box-shadow: 0 0 0 2px rgba(46,125,50,0.15);
     }
 
+    #btn-reset {
+      padding: 7px 9px;
+      background: white;
+      border: 1px solid #BDBDBD;
+      border-radius: 6px;
+      font-size: 12px;
+      color: #616161;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background 0.15s, border-color 0.15s, color 0.15s;
+    }
+
+    #btn-reset:hover {
+      background: #FFEBEE;
+      border-color: #D32F2F;
+      color: #D32F2F;
+    }
+
     .checkbox-grid {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
+      grid-template-columns: repeat(4, 1fr);
       gap: 5px;
     }
 
@@ -340,6 +358,131 @@
       line-height: 1.5;
       word-break: break-all;
     }
+
+    /* ── 우측 슬롯 패널 ── */
+    .slot-panel {
+      width: 130px;
+      min-width: 130px;
+      padding: 10px 8px;
+      background: #FFF8E1;
+      display: flex;
+      flex-direction: column;
+      border-left: 1px solid #FFE082;
+    }
+
+    .slot-panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+
+    .slot-title {
+      font-size: 10px;
+      font-weight: 600;
+      color: #F57F17;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+
+    .slot-empty {
+      font-size: 10px;
+      color: #BDBDBD;
+      text-align: center;
+      margin-top: 10px;
+      line-height: 1.6;
+    }
+
+    #slot-list {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    .slot-item {
+      width: 100%;
+      text-align: left;
+      padding: 6px 7px;
+      background: white;
+      border: 1px solid #FFE082;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background 0.15s;
+      border-left: 3px solid #FF6F00;
+      position: relative;
+    }
+
+    .slot-item:hover { background: #FFF8E1; }
+    .slot-item[draggable="true"] { cursor: grab; }
+    .slot-item.dragging { opacity: 0.4; cursor: grabbing; }
+    .slot-item.drag-over { border-top: 2px solid #FF6F00; }
+
+    .slot-item-date {
+      font-size: 11px;
+      font-weight: 700;
+      color: #E65100;
+      display: block;
+      margin-bottom: 2px;
+    }
+
+    .slot-item-courts {
+      font-size: 10px;
+      font-weight: 600;
+      color: #2E7D32;
+      display: block;
+      margin-bottom: 1px;
+    }
+
+    .slot-item-times {
+      font-size: 10px;
+      color: #757575;
+      display: block;
+      line-height: 1.4;
+      word-break: break-all;
+    }
+
+    .slot-item-count {
+      font-size: 9px;
+      color: #9E9E9E;
+      display: block;
+      margin-top: 2px;
+    }
+
+    .btn-slot-delete {
+      position: absolute;
+      top: 3px;
+      right: 4px;
+      background: none;
+      border: none;
+      color: #BDBDBD;
+      cursor: pointer;
+      font-size: 12px;
+      padding: 0;
+      line-height: 1;
+      transition: color 0.15s;
+    }
+
+    .btn-slot-delete:hover { color: #D32F2F; }
+
+    /* ── 슬롯 저장 버튼 ── */
+    #btn-save-slot {
+      width: 100%;
+      padding: 6px;
+      background: #FF6F00;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s;
+      margin-top: 0;
+    }
+
+    #btn-save-slot:hover:not(:disabled) { background: #E65100; }
+    #btn-save-slot:disabled { background: #FFCC80; cursor: not-allowed; }
   </style>
 </head>
 <body>
@@ -358,7 +501,10 @@
       <!-- 날짜 선택 -->
       <div class="section">
         <div class="section-title">날짜 선택</div>
-        <input type="date" id="date-input" />
+        <div style="display:flex; gap:6px; align-items:center;">
+          <input type="date" id="date-input" style="flex:1;" />
+          <button id="btn-reset" title="코트·시간 선택 해제 및 장바구니 초기화">🗑 초기화</button>
+        </div>
       </div>
 
       <!-- 코트 선택 -->
@@ -388,6 +534,11 @@
         <div class="cart-list" id="cart-list"></div>
       </div>
 
+      <!-- 슬롯 저장 버튼 -->
+      <div class="add-cart-section" style="padding-top:8px; padding-bottom:8px;">
+        <button id="btn-save-slot">💾 현재 날짜+장바구니를 슬롯으로 저장</button>
+      </div>
+
       <!-- 예약하기 버튼 -->
       <div class="button-section">
         <button id="btn-reserve">예약하기</button>
@@ -403,6 +554,16 @@
       <div class="history-title">재사용</div>
       <div id="history-list">
         <div class="history-empty">예약 완료 후<br/>여기에 표시됩니다</div>
+      </div>
+    </div>
+
+    <!-- 우측 예약 슬롯 패널 -->
+    <div class="slot-panel">
+      <div class="slot-panel-header">
+        <span class="slot-title">⚡ 예약슬롯</span>
+      </div>
+      <div id="slot-list">
+        <div class="slot-empty">슬롯 저장 후<br/>빠르게 예약</div>
       </div>
     </div>
 

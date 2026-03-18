@@ -16,6 +16,7 @@
   // ── 상태 ──────────────────────────────────────────────────────
   let cart         = [];   // 현재 장바구니
   let recentItems  = [];   // 재사용 히스토리 (chrome.storage.local 연동)
+  let savedSlots   = [];   // 예약 슬롯 (날짜 + 장바구니 조합)
 
   // ── 날짜 기본값: 오늘 ──────────────────────────────────────────
   const dateInput = document.getElementById('date-input');
@@ -74,12 +75,16 @@
     counterText.textContent =
       `선택 현황: 코트 ${courts.length}개 × 시간 ${times.length}개 = ${pending}건`;
 
+    const cartTotal = getCartTotal();
     counterText.className = '';
     if (pending > 0 && wouldTotal > MAX_TOTAL) {
       counterText.classList.add('over-limit');
-      counterText.textContent += ` ⚠️ (합계 ${wouldTotal}건 초과)`;
+      counterText.textContent += ` ⚠️ (장바구니 ${cartTotal}건 + 추가 ${pending}건 = ${wouldTotal}건 / 최대 ${MAX_TOTAL}건)`;
     } else if (pending > 0) {
       counterText.classList.add('ok');
+      if (cartTotal > 0) {
+        counterText.textContent += ` (장바구니 ${cartTotal}건 포함 총 ${wouldTotal}건)`;
+      }
     }
   }
 
@@ -206,6 +211,147 @@
     });
   }
 
+  // ── 예약 슬롯 ─────────────────────────────────────────────────
+  const slotList = document.getElementById('slot-list');
+
+  function saveSlots() {
+    chrome.storage.local.set({ savedSlots });
+  }
+
+  function loadSlots() {
+    chrome.storage.local.get(['savedSlots'], result => {
+      savedSlots = result.savedSlots || [];
+      renderSlots();
+    });
+  }
+
+  function renderSlots() {
+    slotList.innerHTML = '';
+
+    if (savedSlots.length === 0) {
+      slotList.innerHTML = '<div class="slot-empty">슬롯 저장 후<br/>빠르게 예약</div>';
+      return;
+    }
+
+    savedSlots.forEach((slot, idx) => {
+      // 슬롯 요약 정보 계산
+      const allCourts = [...new Set(slot.cartItems.flatMap(it => it.courts))].sort((a,b)=>a-b);
+      const allTimes  = [...new Set(slot.cartItems.flatMap(it => it.times))].sort((a,b)=>a-b);
+      const totalCount = slot.cartItems.reduce((s, it) => s + it.courts.length * it.times.length, 0);
+
+      const courtsLabel = allCourts.map(c => `${c}번`).join(', ');
+      const timesLabel  = allTimes.map(hourToLabel).join(' ');
+
+      // 날짜 MM/DD 짧게 표시
+      const dateShort = slot.date ? slot.date.slice(5).replace('-', '/') : '?';
+
+      const item = document.createElement('div');
+      item.className = 'slot-item';
+      item.title = `${slot.date} | ${courtsLabel} | ${timesLabel}\n클릭: 날짜+장바구니 자동 설정`;
+      item.innerHTML = `
+        <button class="btn-slot-delete" data-idx="${idx}" title="슬롯 삭제">×</button>
+        <span class="slot-item-date">📅 ${dateShort}</span>
+        <span class="slot-item-courts">${courtsLabel} 코트</span>
+        <span class="slot-item-times">${timesLabel}</span>
+        <span class="slot-item-count">총 ${totalCount}건</span>
+      `;
+
+      // 삭제 버튼
+      item.querySelector('.btn-slot-delete').addEventListener('click', e => {
+        e.stopPropagation();
+        if (confirm(`슬롯 "${dateShort} ${courtsLabel}"을 삭제하시겠습니까?`)) {
+          savedSlots.splice(idx, 1);
+          saveSlots();
+          renderSlots();
+        }
+      });
+
+      // 슬롯 클릭: 날짜 + 장바구니 자동 설정
+      item.addEventListener('click', () => applySlot(slot));
+
+      // 드래그앤드롭
+      item.setAttribute('draggable', 'true');
+      item.dataset.idx = idx;
+
+      item.addEventListener('dragstart', e => {
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', idx);
+        setTimeout(() => item.classList.add('dragging'), 0);
+      });
+
+      item.addEventListener('dragend', () => {
+        item.classList.remove('dragging');
+        slotList.querySelectorAll('.slot-item').forEach(el => el.classList.remove('drag-over'));
+      });
+
+      item.addEventListener('dragover', e => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        slotList.querySelectorAll('.slot-item').forEach(el => el.classList.remove('drag-over'));
+        item.classList.add('drag-over');
+      });
+
+      item.addEventListener('dragleave', () => {
+        item.classList.remove('drag-over');
+      });
+
+      item.addEventListener('drop', e => {
+        e.preventDefault();
+        e.stopPropagation();
+        const fromIdx = Number(e.dataTransfer.getData('text/plain'));
+        const toIdx   = Number(item.dataset.idx);
+        if (fromIdx === toIdx) return;
+        const [moved] = savedSlots.splice(fromIdx, 1);
+        savedSlots.splice(toIdx, 0, moved);
+        saveSlots();
+        renderSlots();
+      });
+
+      slotList.appendChild(item);
+    });
+  }
+
+  function applySlot(slot) {
+    // 1. 날짜 설정
+    if (slot.date) {
+      dateInput.value = slot.date;
+    }
+
+    // 2. 장바구니 교체 + 체크박스 초기화
+    cart = slot.cartItems.map(it => ({ courts: [...it.courts], times: [...it.times] }));
+    saveCart();
+    clearSelections();
+    renderCart(); // 내부에서 updateCounter() 호출
+  }
+
+  // ── [슬롯 저장] 버튼 ──────────────────────────────────────────
+  document.getElementById('btn-save-slot').addEventListener('click', () => {
+    const date = dateInput.value;
+    if (!date)          { alert('날짜를 선택해주세요.'); return; }
+    if (cart.length === 0) { alert('장바구니에 예약 항목을 추가한 후 슬롯을 저장해주세요.'); return; }
+
+    // 중복 검사 (같은 날짜 + 같은 장바구니 조합)
+    const isDuplicate = savedSlots.some(s =>
+      s.date === date &&
+      JSON.stringify(s.cartItems) === JSON.stringify(cart)
+    );
+    if (isDuplicate) {
+      alert('이미 동일한 슬롯이 저장되어 있습니다.');
+      return;
+    }
+
+    savedSlots.unshift({ date, cartItems: cart.map(it => ({ courts: [...it.courts], times: [...it.times] })) });
+    // 최대 20개 유지
+    savedSlots = savedSlots.slice(0, 20);
+    saveSlots();
+    renderSlots();
+
+    cart = [];
+    saveCart();
+    renderCart();
+    clearSelections();
+  });
+
   function addToHistory(cartItems) {
     // 장바구니 항목을 히스토리에 추가 (중복 제거)
     cartItems.forEach(newItem => {
@@ -222,6 +368,15 @@
     saveHistory();
     renderHistory();
   }
+
+  // ── [초기화] 버튼 ─────────────────────────────────────────────
+  document.getElementById('btn-reset').addEventListener('click', () => {
+    clearSelections();
+    cart = [];
+    saveCart();
+    renderCart();
+    hideResult();
+  });
 
   // ── [장바구니에 추가] 버튼 ─────────────────────────────────────
   document.getElementById('btn-add-cart').addEventListener('click', () => {
@@ -325,4 +480,5 @@
   // ── 초기화 ────────────────────────────────────────────────────
   loadCart();
   loadHistory();
+  loadSlots();
 })();
