@@ -508,6 +508,25 @@
     chrome.runtime.sendMessage({ action: 'navigate', location: selectedLocation });
   });
 
+  // ── [별도 창] 버튼 (헤더) ─────────────────────────────────────
+  // 액션 팝업은 포커스를 잃으면 닫히므로, 별도 팝업 창으로 띄워
+  // 예약 사이트와 나란히 두고 사용할 수 있게 한다.
+  const btnPopout = document.getElementById('btn-popout');
+  if (location.search.includes('window=1')) {
+    // 이미 별도 창으로 실행 중 → 버튼 숨김
+    btnPopout.style.display = 'none';
+  } else {
+    btnPopout.addEventListener('click', () => {
+      chrome.windows.create({
+        url: chrome.runtime.getURL('popup.html?window=1'),
+        type: 'popup',
+        width: 700,
+        height: 720,
+      });
+      window.close();
+    });
+  }
+
   // ── content script 보장 후 예약 메시지 전송 ───────────────────
   // 확장 프로그램 리로드/사전 로드된 탭 등으로 content script가 없을 때
   // (Could not establish connection) 동적으로 주입한 뒤 재시도한다.

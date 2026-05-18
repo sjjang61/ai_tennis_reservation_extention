@@ -34,7 +34,13 @@
       justify-content: space-between;
     }
 
-    #btn-home {
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    #btn-home, #btn-popout {
       background: rgba(255,255,255,0.15);
       border: 1px solid rgba(255,255,255,0.4);
       color: white;
@@ -46,7 +52,7 @@
       transition: background 0.15s;
     }
 
-    #btn-home:hover {
+    #btn-home:hover, #btn-popout:hover {
       background: rgba(255,255,255,0.28);
     }
 
@@ -554,7 +560,10 @@
   <!-- 헤더 -->
   <div class="header">
     <span>🎾 노원 마들 테니스장 예약</span>
-    <button id="btn-home">🏠 홈</button>
+    <div class="header-actions">
+      <button id="btn-popout" title="별도 팝업 창으로 열기">🪟 팝업창</button>
+      <button id="btn-home">🏠 홈</button>
+    </div>
   </div>
 
   <div class="body-wrapper">
