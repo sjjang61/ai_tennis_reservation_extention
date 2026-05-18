@@ -431,6 +431,22 @@
       box-shadow: 0 0 0 2px rgba(255,111,0,0.15);
     }
 
+    #btn-reserve-slot {
+      background: #FF6F00;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      padding: 3px 12px;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background 0.15s;
+    }
+
+    #btn-reserve-slot:hover:not(:disabled) { background: #E65100; }
+    #btn-reserve-slot:disabled { background: #FFCC80; cursor: not-allowed; }
+
     .slot-empty {
       grid-column: 1 / -1;
       font-size: 10px;
@@ -615,6 +631,7 @@
     <div class="slot-panel">
       <div class="slot-panel-header">
         <span class="slot-title">⚡ 예약슬롯</span>
+        <button id="btn-reserve-slot" title="현재 날짜+장바구니로 예약">예약하기</button>
         <select id="slot-col-select" title="열 개수 (단)">
           <option value="1">1단</option>
           <option value="2">2단</option>

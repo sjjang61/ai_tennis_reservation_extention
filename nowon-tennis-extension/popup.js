@@ -530,18 +530,21 @@
     }
   }
 
-  // ── [예약하기] 버튼 ────────────────────────────────────────────
-  const btnReserve = document.getElementById('btn-reserve');
+  // ── [예약하기] 버튼 (메인 패널 + 예약슬롯 헤더 공용) ─────────────
+  const btnReserve     = document.getElementById('btn-reserve');
+  const btnReserveSlot = document.getElementById('btn-reserve-slot');
+  const reserveButtons = [btnReserve, btnReserveSlot];
 
-  btnReserve.addEventListener('click', async () => {
+  async function runReservation(triggerBtn) {
     hideResult();
 
     const date = dateInput.value;
     if (!date)          { alert('날짜를 선택해주세요.'); return; }
     if (cart.length === 0) { alert('장바구니에 예약 항목을 추가해주세요.'); return; }
 
-    btnReserve.disabled    = true;
-    btnReserve.textContent = '예약 중...';
+    const originalText = triggerBtn.textContent;
+    reserveButtons.forEach(b => { b.disabled = true; });
+    triggerBtn.textContent = '예약 중...';
 
     try {
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -569,10 +572,13 @@
     } catch (err) {
       showResult('error', `❌ 예약 실패: ${err.message}`);
     } finally {
-      btnReserve.disabled    = false;
-      btnReserve.textContent = '예약하기';
+      reserveButtons.forEach(b => { b.disabled = false; });
+      triggerBtn.textContent = originalText;
     }
-  });
+  }
+
+  btnReserve.addEventListener('click', () => runReservation(btnReserve));
+  btnReserveSlot.addEventListener('click', () => runReservation(btnReserveSlot));
 
   // ── 초기화 ────────────────────────────────────────────────────
   loadLocation();
