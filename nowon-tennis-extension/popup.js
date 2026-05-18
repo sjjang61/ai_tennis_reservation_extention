@@ -11,12 +11,23 @@
     { hour: 21, label: '21:00' },
   ];
 
+  // 장소: id / 표시명 / 예약 페이지 cate2 파라미터
+  const LOCATIONS = [
+    { id: 'madeul',   name: '마들',   cate2: 16 },
+    { id: 'choansan', name: '초안산', cate2: 17 },
+    { id: 'buramsan', name: '불암산', cate2: 15 },
+    { id: 'suraksan', name: '수락산', cate2: 117 },
+  ];
+  const DEFAULT_LOCATION = 'madeul';
+
   const MAX_TOTAL = 4;
 
   // ── 상태 ──────────────────────────────────────────────────────
-  let cart         = [];   // 현재 장바구니
-  let recentItems  = [];   // 재사용 히스토리 (chrome.storage.local 연동)
-  let savedSlots   = [];   // 예약 슬롯 (날짜 + 장바구니 조합)
+  let cart             = [];   // 현재 장바구니
+  let recentItems      = [];   // 재사용 히스토리 (chrome.storage.local 연동)
+  let savedSlots       = [];   // 예약 슬롯 (날짜 + 장바구니 조합)
+  let selectedLocation = DEFAULT_LOCATION;   // 선택된 장소 id
+  let slotColumns      = 2;                  // 예약슬롯 열 개수 (1~4, 저장됨)
 
   // ── 날짜 기본값: 오늘 ──────────────────────────────────────────
   const dateInput = document.getElementById('date-input');
@@ -41,6 +52,45 @@
     label.innerHTML = `<input type="checkbox" class="time-cb" value="${hour}" /><span>${text}</span>`;
     timeGrid.appendChild(label);
   });
+
+  // ── 장소 라디오 생성 ───────────────────────────────────────────
+  const locationGroup = document.getElementById('location-group');
+  LOCATIONS.forEach(({ id, name }) => {
+    const label = document.createElement('label');
+    label.className = 'location-pill';
+    label.dataset.id = id;
+    label.innerHTML =
+      `<input type="radio" name="location" value="${id}" /><span>${name}</span>`;
+    locationGroup.appendChild(label);
+  });
+
+  function renderLocation() {
+    locationGroup.querySelectorAll('.location-pill').forEach(pill => {
+      const isSel = pill.dataset.id === selectedLocation;
+      pill.classList.toggle('selected', isSel);
+      pill.querySelector('input').checked = isSel;
+    });
+  }
+
+  locationGroup.querySelectorAll('input[name="location"]').forEach(radio => {
+    radio.addEventListener('change', () => {
+      selectedLocation = radio.value;
+      saveLocation();
+      renderLocation();
+    });
+  });
+
+  function saveLocation() {
+    chrome.storage.local.set({ selectedLocation });
+  }
+
+  function loadLocation() {
+    chrome.storage.local.get(['selectedLocation'], result => {
+      const valid = LOCATIONS.some(l => l.id === result.selectedLocation);
+      selectedLocation = valid ? result.selectedLocation : DEFAULT_LOCATION;
+      renderLocation();
+    });
+  }
 
   // ── 헬퍼 ──────────────────────────────────────────────────────
   function getSelectedCourts() {
@@ -212,7 +262,32 @@
   }
 
   // ── 예약 슬롯 ─────────────────────────────────────────────────
-  const slotList = document.getElementById('slot-list');
+  const slotList   = document.getElementById('slot-list');
+  const slotColSel = document.getElementById('slot-col-select');
+
+  function applySlotColumns() {
+    slotList.style.gridTemplateColumns = `repeat(${slotColumns}, 1fr)`;
+    slotColSel.value = String(slotColumns);
+  }
+
+  function saveSlotColumns() {
+    chrome.storage.local.set({ slotColumns });
+  }
+
+  function loadSlotColumns() {
+    chrome.storage.local.get(['slotColumns'], result => {
+      const n = Number(result.slotColumns);
+      slotColumns = (n >= 1 && n <= 4) ? n : 2;
+      applySlotColumns();
+    });
+  }
+
+  slotColSel.addEventListener('change', () => {
+    const n = Number(slotColSel.value);
+    slotColumns = (n >= 1 && n <= 4) ? n : 2;
+    saveSlotColumns();
+    applySlotColumns();
+  });
 
   function saveSlots() {
     chrome.storage.local.set({ savedSlots });
@@ -430,8 +505,30 @@
 
   // ── [예약 홈으로 이동] 버튼 (헤더) ────────────────────────────
   document.getElementById('btn-home').addEventListener('click', () => {
-    chrome.runtime.sendMessage({ action: 'navigate' });
+    chrome.runtime.sendMessage({ action: 'navigate', location: selectedLocation });
   });
+
+  // ── content script 보장 후 예약 메시지 전송 ───────────────────
+  // 확장 프로그램 리로드/사전 로드된 탭 등으로 content script가 없을 때
+  // (Could not establish connection) 동적으로 주입한 뒤 재시도한다.
+  async function sendReserveMessage(tabId, payload) {
+    try {
+      return await chrome.tabs.sendMessage(tabId, payload);
+    } catch (err) {
+      const noReceiver =
+        err && /Receiving end does not exist|Could not establish connection/i.test(err.message);
+      if (!noReceiver) throw err;
+
+      await chrome.scripting.executeScript({
+        target: { tabId },
+        files: ['jquery-3.7.1.min.js', 'content.js'],
+      });
+
+      // 주입 직후 리스너 등록까지 약간의 여유
+      await new Promise(r => setTimeout(r, 150));
+      return await chrome.tabs.sendMessage(tabId, payload);
+    }
+  }
 
   // ── [예약하기] 버튼 ────────────────────────────────────────────
   const btnReserve = document.getElementById('btn-reserve');
@@ -454,7 +551,7 @@
         return;
       }
 
-      const response = await chrome.tabs.sendMessage(tab.id, {
+      const response = await sendReserveMessage(tab.id, {
         action: 'reserve',
         params: { date, cartItems: cart },
       });
@@ -478,6 +575,8 @@
   });
 
   // ── 초기화 ────────────────────────────────────────────────────
+  loadLocation();
+  loadSlotColumns();
   loadCart();
   loadHistory();
   loadSlots();

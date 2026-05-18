@@ -102,19 +102,24 @@ async function reserve(basket_list) {
 //  메시지 리스너
 // ────────────────────────────────────────────────────────────
 
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message.action === 'reserve') {
-    executeReservation(message.params)
-      .then(result => sendResponse({ success: true, result }))
-      .catch(err => sendResponse({ success: false, error: err.message }));
-    return true; // 비동기 응답을 위해 필수
-  }
+// 선언적 주입 + 동적 주입(executeScript) 중복 시 리스너 이중 등록 방지
+if (!window.__nowonTennisListenerRegistered) {
+  window.__nowonTennisListenerRegistered = true;
 
-  if (message.action === 'navigate') {
-    window.location.href = message.url;
-    sendResponse({ success: true });
-  }
-});
+  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message.action === 'reserve') {
+      executeReservation(message.params)
+        .then(result => sendResponse({ success: true, result }))
+        .catch(err => sendResponse({ success: false, error: err.message }));
+      return true; // 비동기 응답을 위해 필수
+    }
+
+    if (message.action === 'navigate') {
+      window.location.href = message.url;
+      sendResponse({ success: true });
+    }
+  });
+}
 
 // ────────────────────────────────────────────────────────────
 //  예약 조합 실행
